@@ -1,0 +1,73 @@
+import pandas as pd
+import shap
+from lightgbm import LGBMClassifier
+import matplotlib.pyplot as plt
+
+# 读取文件
+excel_file = pd.ExcelFile('/mnt/20250309.xlsx')
+
+# 获取工作表数据
+df = excel_file.parse('Sheet1')
+
+# 定义英文列名映射，删去 "Label" 字样
+col_name_mapping = {
+    '事故发生时段-标号': 'Accident Time Period',
+    '路段信息-标号': 'Road Section Information',
+    '天气-标号': 'Weather',
+    '道路的线形-标号': 'Road Alignment',
+    '最高允许车速(km/h)': 'Maximum Permitted Speed (km/h)',
+    '路面材料-标号': 'Pavement Material',
+    '道路表面污染-标号': 'Road Surface Contamination',
+    '路表潮湿度-标号': 'Road Surface Moisture',
+    '路面状况-标号': 'Pavement Condition',
+    '驾龄': 'Driving Experience',
+    '行人运动状态标号': 'Pedestrian Movement State',
+    '车龄': 'Vehicle Age',
+    '年龄d': 'Driver Age',
+    '司机性别-标号': 'Driver Gender',
+    '年龄p': 'Pedestrian Age',
+    '行人性别-标号': 'Pedestrian Gender',
+    '是否超速-标号': 'Speeding',
+    '行人受伤情况': 'Pedestrian Injury Condition'
+}
+
+# 重命名列名
+df = df.rename(columns=col_name_mapping)
+
+# 提取特征和目标变量
+X = df.drop(columns='Pedestrian Injury Condition')
+y = df['Pedestrian Injury Condition']
+
+# 将目标变量的数值映射为对应的受伤类别标签
+injury_mapping = {1: 'Possible/Uninjured', 2: 'Emergency/Inpatient', 3: 'Fatal'}
+y = y.map(injury_mapping)
+
+# 确定 "急诊/住院" 对应的类别索引
+target_class_index = list(injury_mapping.values()).index('Emergency/Inpatient')
+
+# 构建并训练 LightGBM 模型
+model = LGBMClassifier(random_state=2024)
+model.fit(X, y)
+
+# 创建 SHAP 解释器
+explainer = shap.TreeExplainer(model)
+
+# 计算 SHAP 值
+shap_values = explainer.shap_values(X)
+
+# 设置图片清晰度
+plt.rcParams['figure.dpi'] = 300
+
+# 设置字体以正常显示英文
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
+plt.rcParams['axes.unicode_minus'] = False
+
+# 绘制道路线形关于行人受伤情况（急诊/住院）的 SHAP 依赖性图
+shap.dependence_plot('Road Alignment', shap_values[target_class_index], X, show=False)
+plt.title('SHAP Dependence Plot of Road Alignment on Pedestrian Injury Condition (Emergency/Inpatient)')
+plt.show()
+
+# 绘制道路路面材料关于行人受伤情况（急诊/住院）的 SHAP 依赖性图
+shap.dependence_plot('Pavement Material', shap_values[target_class_index], X, show=False)
+plt.title('SHAP Dependence Plot of Pavement Material on Pedestrian Injury Condition (Emergency/Inpatient)')
+plt.show()
