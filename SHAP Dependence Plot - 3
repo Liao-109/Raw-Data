@@ -1,0 +1,73 @@
+import pandas as pd
+import shap
+from lightgbm import LGBMClassifier
+import matplotlib.pyplot as plt
+
+# 读取文件
+excel_file = pd.ExcelFile('/mnt/20250309.xlsx')
+
+# 获取工作表数据
+df = excel_file.parse('Sheet1')
+
+# 定义英文列名映射，删去 "Label" 字样
+col_name_mapping = {
+    'Accident Occurrence Period': 'Accident Time Period',
+    'Road Section Information': 'Road Section Information',
+    'Weat': 'Weather',
+    'Road Alignment ': 'Road Alignment',
+    'Maximum Allowed Speed (km/h)': 'Maximum Permitted Speed (km/h)',
+    'Pavement Material': 'Pavement Material',
+    'Road Surface Contamination': 'Road Surface Contamination',
+    'Road Surface Moisture Level': 'Road Surface Moisture',
+    'Pavement Condition': 'Pavement Condition',
+    'Driving Experience (Years)': 'Driving Experience',
+    'Pedestrian Movement State': 'Pedestrian Movement State',
+    'Vehicle Age': 'Vehicle Age',
+    "Driver's Age": 'Driver Age',
+    'Driver\'s Gender': 'Driver Gender',
+    'Pedestrian\'s Age': 'Pedestrian Age',
+    'Pedestrian\'s Gender': 'Pedestrian Gender',
+    'Whether Speeding': 'Speeding',
+    'Pedestrian Injury Situation': 'Pedestrian Injury Condition'
+}
+
+# 重命名列名
+df = df.rename(columns=col_name_mapping)
+
+# 提取特征和目标变量
+X = df.drop(columns='Pedestrian Injury Condition')
+y = df['Pedestrian Injury Condition']
+
+# 将目标变量的数值映射为对应的受伤类别标签
+injury_mapping = {1: 'Possible/Uninjured', 2: 'Emergency/Inpatient', 3: 'Fatal'}
+y = y.map(injury_mapping)
+
+# 确定 "死亡" 对应的类别索引
+target_class_index = list(injury_mapping.values()).index('Fatal')
+
+# 构建并训练 LightGBM 模型
+model = LGBMClassifier(random_state=2024)
+model.fit(X, y)
+
+# 创建 SHAP 解释器
+explainer = shap.TreeExplainer(model)
+
+# 计算 SHAP 值
+shap_values = explainer.shap_values(X)
+
+# 设置图片清晰度
+plt.rcParams['figure.dpi'] = 300
+
+# 设置字体以正常显示英文
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
+plt.rcParams['axes.unicode_minus'] = False
+
+# 绘制道路线形关于行人受伤情况（死亡）的 SHAP 依赖性图
+shap.dependence_plot('Road Alignment', shap_values[target_class_index], X, show=False)
+plt.title('SHAP Dependence Plot of Road Alignment on Pedestrian Injury Condition (Fatal)')
+plt.show()
+
+# 绘制道路路面材料关于行人受伤情况（死亡）的 SHAP 依赖性图
+shap.dependence_plot('Pavement Material', shap_values[target_class_index], X, show=False)
+plt.title('SHAP Dependence Plot of Pavement Material on Pedestrian Injury Condition (Fatal)')
+plt.show()
