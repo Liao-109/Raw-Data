@@ -1,0 +1,58 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# 读取文件
+excel_file = pd.ExcelFile('/mnt/20250309.xlsx')
+
+# 获取指定工作表中的数据
+df = excel_file.parse('Sheet1')
+
+# 定义英文列名映射，删去 "Label" 字样
+col_name_mapping = {
+    '事故发生时段-标号': 'Accident Time Period',
+    '路段信息-标号': 'Road Section Information',
+    '天气-标号': 'Weather',
+    '道路的线形-标号': 'Road Alignment',
+    '最高允许车速(km/h)': 'Maximum Permitted Speed (km/h)',
+    '路面材料-标号': 'Pavement Material',
+    '道路表面污染-标号': 'Road Surface Contamination',
+    '路表潮湿度-标号': 'Road Surface Moisture',
+    '路面状况-标号': 'Pavement Condition',
+    '驾龄': 'Driving Experience',
+    '行人运动状态标号': 'Pedestrian Movement State',
+    '车龄': 'Vehicle Age',
+    '年龄d': 'Driver Age',
+    '司机性别-标号': 'Driver Gender',
+    '年龄p': 'Pedestrian Age',
+    '行人性别-标号': 'Pedestrian Gender',
+    '是否超速-标号': 'Speeding',
+    '行人受伤情况': 'Pedestrian Injury Condition'
+}
+
+# 重命名列名
+df = df.rename(columns=col_name_mapping)
+
+# 设置图片清晰度
+plt.rcParams['figure.dpi'] = 300
+
+# 设置字体以正常显示英文
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
+plt.rcParams['axes.unicode_minus'] = False
+
+# 设置图形大小为 18：8
+plt.figure(figsize=(18, 8))
+
+# 计算相关系数矩阵
+correlation_matrix = df.corr()
+
+# 绘制热力图
+ax = sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+
+# 设置底部标签倾斜 15°，并使其与图片内容对齐
+plt.xticks(rotation=15, ha='right')
+
+# 添加标题
+plt.title('Correlation Heatmap')
+
+plt.show()
